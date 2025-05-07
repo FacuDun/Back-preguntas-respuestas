@@ -87,22 +87,6 @@ function nextRoundOrEndGame() {
     }
 }
 
-socket.on("disconnect", () => {
-    const disconnectedPlayer = players.find(p => p.id === socket.id);
-    
-    if (disconnectedPlayer) {
-        console.log(`Jugador desconectado: ${disconnectedPlayer.name}`);
-        players = players.filter(p => p.id !== socket.id);
-        
-        // Si era el último jugador, limpiar todo
-        if (players.length === 0) {
-            resetGame();
-            console.log("Todos desconectados. Estado resetado.");
-        }
-        
-        io.emit("update-lobby", players);
-    }
-});
 
 function resetGame() {
     questions = [];

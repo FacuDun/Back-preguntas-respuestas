@@ -87,16 +87,6 @@ function nextRoundOrEndGame() {
     }
 }
 
-
-function resetGame() {
-    questions = [];
-    currentQuestionIndex = 0;
-    scores = {};
-    currentRoundAnswers = [];
-    hasSubmittedAnswer = [];
-    console.log("Estado del juego completamente resetado");
-}
-
 function endGame() {
     const finalScores = {};
     players.forEach(player => {
@@ -104,6 +94,13 @@ function endGame() {
     });
     io.emit("game-over", finalScores);
     resetGame();
+}
+
+function resetGame() {
+    currentQuestionIndex = 0;
+    questions = [];
+    currentRoundAnswers = [];
+    hasSubmittedAnswer = [];
 }
 
 // Eventos del Socket
@@ -119,20 +116,13 @@ io.on("connection", (socket) => {
     });
 
     socket.on("start-game", () => {
-        // Limpieza completa
         questions = [];
         currentQuestionIndex = 0;
         scores = {};
+        players.forEach(player => scores[player.id] = 0);
         currentRoundAnswers = [];
         hasSubmittedAnswer = [];
-        
-        // Reiniciar puntuaciones solo para jugadores activos
-        players.forEach(player => {
-            scores[player.id] = 0;
-        });
-        
         io.emit("start-question-phase");
-        console.log("Nueva partida iniciada. Estado limpiado."); // Debug
     });
 
     socket.on("submit-question", (question) => {

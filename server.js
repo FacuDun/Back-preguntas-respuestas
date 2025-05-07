@@ -7,10 +7,10 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: [
-            "https://facudun.github.io/Front-pregunta-respuesta",
-            "https://facudun.github.io",
-            "http://localhost:3000", // Para desarrollo local
-            null // Para algunos casos especiales
+            "https://facudun.github.io/Front-pregunta-respuesta"
+            ,"https://facudun.github.io"
+            //,"http://localhost:3000"
+            //,null
         ],
         methods: ["GET", "POST"],
         credentials: true

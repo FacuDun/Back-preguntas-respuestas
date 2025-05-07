@@ -1,25 +1,46 @@
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
-const app = express();
-const server = http.createServer(app);
 
-// Configura CORS para permitir tu frontend
+
+
+// Middleware CORS para Express (HTTP)
+app.use((req, res, next) => {
+  const allowedOrigins = [
+    "https://facudun.github.io",
+    "https://facudun.github.io/Front-pregunta-respuesta",
+    "https://facudun.github.io/Front-pregunta-respuesta/",
+  ];
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST");
+  }
+  next();
+});
+
+// Configuración CORS para Socket.io
 const io = new Server(server, {
   cors: {
-    origin: "https://facudun.github.io/Front-pregunta-respuesta", // ¡URL exacta sin la barra final!
+    origin: allowedOrigins, // Mismas URLs que arriba
     methods: ["GET", "POST"],
-    credentials: true
+    credentials: true,
+    transports: ["websocket", "polling"] // Fuerza ambos métodos
   }
 });
 
-// Resto de tu código...
-server.listen(process.env.PORT || 3000, () => {
-  console.log("Servidor corriendo");
+// Ruta básica para probar HTTP
+app.get("/", (req, res) => {
+  res.send("Backend funcionando ✅");
 });
 
+// Lógica de Socket.io
+io.on("connection", (socket) => {
+  console.log("🔌 Conexión Socket.io exitosa ID:", socket.id);
+});
 
-const PORT = process.env.PORT || 3000;
+// Iniciar servidor
+const PORT = process.env.PORT || 10000; // Usa el puerto de Render
+server.listen(PORT, () => {
+  console.log(`🚀 Servidor en puerto ${PORT}`);
+});
 
 let players = [];
 let questions = [];
@@ -61,8 +82,4 @@ io.on("connection", (socket) => {
         players = players.filter(p => p.id !== socket.id);
         io.emit("update-lobby", players);
     });
-});
-
-server.listen(PORT, () => {
-    console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });

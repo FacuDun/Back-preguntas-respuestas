@@ -20,24 +20,27 @@ const PORT = process.env.PORT || 10000;
 // Variables de estado del juego
 let players = [];
 let questions = [];
-let answers = [];
 let currentQuestionIndex = 0;
 let scores = {};
-let submittedAnswers = 0;
+let currentRoundAnswers = [];  // Respuestas de la ronda actual solamente
+let hasSubmittedAnswer = [];   // Trackear quién ha respondido
 
 io.on("connection", (socket) => {
     console.log("Nuevo usuario conectado:", socket.id);
 
     socket.on("join", (username) => {
         const isAdmin = username === "Facu";
-        players.push({ id: socket.id, name: username, isAdmin });
+        const player = { id: socket.id, name: username, isAdmin };
+        players.push(player);
         io.emit("update-lobby", players);
     });
 
     socket.on("start-game", () => {
-        questions = []; // Reiniciar preguntas al comenzar nuevo juego
+        questions = [];
         currentQuestionIndex = 0;
         scores = {};
+        currentRoundAnswers = [];
+        hasSubmittedAnswer = [];
         io.emit("start-question-phase");
     });
 
@@ -46,63 +49,83 @@ io.on("connection", (socket) => {
             questions.push({ text: question, author: socket.id });
             
             if (questions.length === players.length) {
-                io.emit("start-answer-phase", questions[currentQuestionIndex].text);
+                // Inicializar seguimiento de respuestas para nueva ronda
+                hasSubmittedAnswer = [];
+                io.emit("start-answer-phase", { 
+                    question: questions[currentQuestionIndex].text,
+                    questionAuthor: questions[currentQuestionIndex].author 
+                });
             }
         }
     });
 
     socket.on("submit-answer", (answer) => {
-        // Verificar que el jugador no haya enviado ya una respuesta
-        if (!answers.some(a => a.author === socket.id)) {
-            answers.push({
+        const currentAuthor = questions[currentQuestionIndex].author;
+        
+        // Solo aceptar si: no es el autor y no ha respondido aún
+        if (socket.id !== currentAuthor && !hasSubmittedAnswer.includes(socket.id)) {
+            currentRoundAnswers.push({
                 text: answer,
                 author: socket.id,
-                votes: 0,
-                questionIndex: currentQuestionIndex
+                votes: 0
             });
-            submittedAnswers++;
+            hasSubmittedAnswer.push(socket.id);
             
-            // Verificar si todos respondieron (excepto el autor de la pregunta)
-            const currentAuthor = questions[currentQuestionIndex].author;
+            // Verificar si todos los que deben responder lo han hecho
             const playersWhoShouldAnswer = players.filter(p => p.id !== currentAuthor).length;
             
-            if (submittedAnswers >= playersWhoShouldAnswer) {
-                io.emit("start-vote-phase", answers.filter(a => a.questionIndex === currentQuestionIndex));
-                submittedAnswers = 0;
+            if (currentRoundAnswers.length >= playersWhoShouldAnswer) {
+                io.emit("start-vote-phase", {
+                    answers: currentRoundAnswers,
+                    questionAuthor: currentAuthor
+                });
             }
         }
     });
 
     socket.on("vote", (answerIndex) => {
-        // Validar el índice de respuesta
-        if (answerIndex >= 0 && answerIndex < answers.length) {
-            answers[answerIndex].votes++;
+        const currentAuthor = questions[currentQuestionIndex].author;
+        const voterId = socket.id;
+        
+        // Validar: no es el autor, índice válido, y no ha votado antes
+        if (voterId !== currentAuthor && 
+            answerIndex >= 0 && 
+            answerIndex < currentRoundAnswers.length &&
+            !currentRoundAnswers.some(a => a.voters && a.voters.includes(voterId))) {
             
-            // Verificar si todos votaron (todos menos el autor de la pregunta)
-            const currentAuthor = questions[currentQuestionIndex].author;
+            // Inicializar array de votantes si no existe
+            currentRoundAnswers[answerIndex].voters = currentRoundAnswers[answerIndex].voters || [];
+            currentRoundAnswers[answerIndex].voters.push(voterId);
+            currentRoundAnswers[answerIndex].votes++;
+            
+            // Verificar si todos han votado (todos menos el autor)
             const votersCount = players.filter(p => p.id !== currentAuthor).length;
-            const totalVotes = answers.filter(a => a.questionIndex === currentQuestionIndex)
-                                     .reduce((sum, a) => sum + a.votes, 0);
+            const totalVotes = currentRoundAnswers.reduce((sum, a) => sum + (a.voters ? a.voters.length : 0), 0);
             
             if (totalVotes >= votersCount) {
-                // Preparar resultados ordenados
-                const currentAnswers = answers.filter(a => a.questionIndex === currentQuestionIndex);
-                const rankedAnswers = [...currentAnswers].sort((a, b) => b.votes - a.votes);
+                const rankedAnswers = [...currentRoundAnswers].sort((a, b) => b.votes - a.votes);
                 
-                // Actualizar puntajes (más puntos para mejor rankeados)
+                // Asignar puntos (más puntos para los primeros lugares)
                 rankedAnswers.forEach((answer, index) => {
                     if (!scores[answer.author]) scores[answer.author] = 0;
-                    scores[answer.author] += (currentAnswers.length - index);
+                    scores[answer.author] += (currentRoundAnswers.length - index);
                 });
                 
-                io.emit("show-results", rankedAnswers, scores);
+                io.emit("show-results", { 
+                    rankedAnswers, 
+                    scores 
+                });
                 
                 // Preparar siguiente ronda o finalizar
                 currentQuestionIndex++;
                 if (currentQuestionIndex < questions.length) {
                     setTimeout(() => {
-                        answers = answers.filter(a => a.questionIndex < currentQuestionIndex);
-                        io.emit("start-answer-phase", questions[currentQuestionIndex].text);
+                        currentRoundAnswers = []; // Limpiar para nueva ronda
+                        hasSubmittedAnswer = [];
+                        io.emit("start-answer-phase", { 
+                            question: questions[currentQuestionIndex].text,
+                            questionAuthor: questions[currentQuestionIndex].author 
+                        });
                     }, 10000); // 10 segundos para ver resultados
                 } else {
                     io.emit("game-over", scores);

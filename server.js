@@ -7,7 +7,7 @@ const server = http.createServer(app);
 // Configura CORS para permitir tu frontend
 const io = new Server(server, {
   cors: {
-    origin: "https://facudun.github.io", // ¡URL exacta sin la barra final!
+    origin: "https://facudun.github.io/Front-pregunta-respuesta", // ¡URL exacta sin la barra final!
     methods: ["GET", "POST"],
     credentials: true
   }

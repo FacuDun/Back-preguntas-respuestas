@@ -11,7 +11,7 @@ const io = socketIo(server, {
     origin: ["https://facudun.github.io/Front-pregunta-respuesta/",
              "https://facudun.github.io/Front-pregunta-respuesta",
             "https://facudun.github.io",
-            "https://facudun.github.io/"]
+            "https://facudun.github.io/"],
     methods: ["GET", "POST"]
   }
 });

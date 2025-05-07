@@ -84,51 +84,49 @@ io.on("connection", (socket) => {
     });
 
     socket.on("vote", (answerIndex) => {
-        const currentAuthor = questions[currentQuestionIndex].author;
-        const voterId = socket.id;
-        
-        // Validar: no es el autor, índice válido, y no ha votado antes
-        if (voterId !== currentAuthor && 
-            answerIndex >= 0 && 
-            answerIndex < currentRoundAnswers.length &&
-            !currentRoundAnswers.some(a => a.voters && a.voters.includes(voterId))) {
-            
+        // Eliminamos la validación que excluía al autor
+        if (answerIndex >= 0 && answerIndex < currentRoundAnswers.length) {
             // Inicializar array de votantes si no existe
             currentRoundAnswers[answerIndex].voters = currentRoundAnswers[answerIndex].voters || [];
-            currentRoundAnswers[answerIndex].voters.push(voterId);
-            currentRoundAnswers[answerIndex].votes++;
             
-            // Verificar si todos han votado (todos menos el autor)
-            const votersCount = players.filter(p => p.id !== currentAuthor).length;
-            const totalVotes = currentRoundAnswers.reduce((sum, a) => sum + (a.voters ? a.voters.length : 0), 0);
-            
-            if (totalVotes >= votersCount) {
-                const rankedAnswers = [...currentRoundAnswers].sort((a, b) => b.votes - a.votes);
+            // Verificar que este usuario no haya votado ya
+            if (!currentRoundAnswers[answerIndex].voters.includes(socket.id)) {
+                currentRoundAnswers[answerIndex].voters.push(socket.id);
+                currentRoundAnswers[answerIndex].votes++;
                 
-                // Asignar puntos (más puntos para los primeros lugares)
-                rankedAnswers.forEach((answer, index) => {
-                    if (!scores[answer.author]) scores[answer.author] = 0;
-                    scores[answer.author] += (currentRoundAnswers.length - index);
-                });
+                // Verificar si TODOS han votado (ahora incluyendo al autor)
+                const totalVotes = currentRoundAnswers.reduce((sum, a) => sum + (a.voters ? a.voters.length : 0), 0);
                 
-                io.emit("show-results", { 
-                    rankedAnswers, 
-                    scores 
-                });
-                
-                // Preparar siguiente ronda o finalizar
-                currentQuestionIndex++;
-                if (currentQuestionIndex < questions.length) {
-                    setTimeout(() => {
-                        currentRoundAnswers = []; // Limpiar para nueva ronda
-                        hasSubmittedAnswer = [];
-                        io.emit("start-answer-phase", { 
-                            question: questions[currentQuestionIndex].text,
-                            questionAuthor: questions[currentQuestionIndex].author 
-                        });
-                    }, 10000); // 10 segundos para ver resultados
-                } else {
-                    io.emit("game-over", scores);
+                if (totalVotes >= players.length) {  // Cambiamos la condición
+                    const rankedAnswers = [...currentRoundAnswers].sort((a, b) => b.votes - a.votes);
+                    
+                    // Asignar puntos
+                    rankedAnswers.forEach((answer, index) => {
+                        if (!scores[answer.author]) scores[answer.author] = 0;
+                        scores[answer.author] += (currentRoundAnswers.length - index);
+                    });
+                    
+                    // Enviamos los nombres reales en los resultados
+                    const rankedAnswersWithNames = rankedAnswers.map(a => ({
+                        text: a.text,
+                        votes: a.votes,
+                        authorName: players.find(p => p.id === a.author)?.name || "Anónimo"
+                    }));
+                    
+                    const scoresWithNames = {};
+                    Object.keys(scores).forEach(id => {
+                        const player = players.find(p => p.id === id);
+                        if (player) {
+                            scoresWithNames[player.name] = scores[id];
+                        }
+                    });
+                    
+                    io.emit("show-results", { 
+                        rankedAnswers: rankedAnswersWithNames, 
+                        scores: scoresWithNames 
+                    });
+                    
+                    // ... resto del código para siguiente ronda o fin del juego
                 }
             }
         }

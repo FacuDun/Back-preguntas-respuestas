@@ -8,7 +8,8 @@ const io = new Server(server, {
     cors: {
         origin: "https://facudun.github.io/Front-pregunta-respuesta/",
         "https://facudun.github.io/Front-pregunta-respuesta",
-        "https://facudun.github.io"// Permitir cualquier origen (en producción, usa tu dominio)
+        "https://facudun.github.io",
+        null
     },
 });
 

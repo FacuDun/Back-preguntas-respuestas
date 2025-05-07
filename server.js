@@ -1,14 +1,23 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-
 const app = express();
 const server = http.createServer(app);
+
+// Configura CORS para permitir tu frontend
 const io = new Server(server, {
-    cors: {
-        origin: "https://facudun.github.io/Front-pregunta-respuesta/", // Permitir cualquier origen (en producción, usa tu dominio)
-    },
+  cors: {
+    origin: "https://facudun.github.io", // ¡URL exacta sin la barra final!
+    methods: ["GET", "POST"],
+    credentials: true
+  }
 });
+
+// Resto de tu código...
+server.listen(process.env.PORT || 3000, () => {
+  console.log("Servidor corriendo");
+});
+
 
 const PORT = process.env.PORT || 3000;
 

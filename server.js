@@ -6,7 +6,9 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "https://facudun.github.io/Front-pregunta-respuesta", // Permitir cualquier origen (en producción, usa tu dominio)
+        origin: "https://facudun.github.io/Front-pregunta-respuesta/",
+        "https://facudun.github.io/Front-pregunta-respuesta",
+        "https://facudun.github.io"// Permitir cualquier origen (en producción, usa tu dominio)
     },
 });
 

@@ -105,21 +105,84 @@ io.on("connection", (socket) => {
 
 
 socket.on("vote", (answerIndex) => {
+    // Validar índice y que la respuesta exista
     if (answerIndex >= 0 && answerIndex < currentRoundAnswers.length) {
         const answer = currentRoundAnswers[answerIndex];
         const voterId = socket.id;
         
+        // Verificar que el jugador no haya votado ya en esta ronda
         if (!answer.voters.includes(voterId)) {
+            // Registrar el voto
             answer.voters.push(voterId);
             answer.votes++;
             
-            // Verificación para todos los jugadores (incluyendo autor)
+            // Verificar si TODOS los jugadores han votado (incluyendo al autor)
             const allVoted = players.every(player => 
                 currentRoundAnswers.some(a => a.voters.includes(player.id))
             );
             
             if (allVoted) {
-                // ... resto del código para mostrar resultados ...
+                // Notificar a todos que la votación ha finalizado
+                io.emit("voting-completed");
+                
+                // Ordenar respuestas por votos (mayor a menor)
+                const rankedAnswers = [...currentRoundAnswers].sort((a, b) => b.votes - a.votes);
+                
+                // Asignar puntos (1 punto por voto recibido)
+                rankedAnswers.forEach(answer => {
+                    const authorId = answer.author;
+                    if (!scores[authorId]) scores[authorId] = 0;
+                    scores[authorId] += answer.votes;
+                });
+                
+                // Preparar datos para el frontend con nombres
+                const rankedAnswersWithNames = rankedAnswers.map(a => ({
+                    text: a.text,
+                    votes: a.votes,
+                    authorName: players.find(p => p.id === a.author)?.name || "Anónimo"
+                }));
+                
+                // Convertir scores a nombres
+                const scoresWithNames = {};
+                players.forEach(player => {
+                    scoresWithNames[player.name] = scores[player.id] || 0;
+                });
+                
+                // Enviar resultados después de 2 segundos (para UX)
+                setTimeout(() => {
+                    io.emit("show-results", {
+                        rankedAnswers: rankedAnswersWithNames,
+                        scores: scoresWithNames
+                    });
+                    
+                    // Preparar siguiente ronda o finalizar juego
+                    currentQuestionIndex++;
+                    if (currentQuestionIndex < questions.length) {
+                        setTimeout(() => {
+                            currentRoundAnswers = [];
+                            hasSubmittedAnswer = [];
+                            const nextQuestion = questions[currentQuestionIndex];
+                            io.emit("start-answer-phase", {
+                                question: nextQuestion.text,
+                                questionAuthor: nextQuestion.author,
+                                questionAuthorName: players.find(p => p.id === nextQuestion.author)?.name || "Anónimo"
+                            });
+                        }, 10000);
+                    } else {
+                        // Juego terminado
+                        const finalScores = {};
+                        players.forEach(player => {
+                            finalScores[player.name] = scores[player.id] || 0;
+                        });
+                        io.emit("game-over", finalScores);
+                        
+                        // Resetear estado para nueva partida
+                        currentQuestionIndex = 0;
+                        questions = [];
+                        currentRoundAnswers = [];
+                        hasSubmittedAnswer = [];
+                    }
+                }, 2000);
             }
         }
     }

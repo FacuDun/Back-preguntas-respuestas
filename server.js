@@ -262,17 +262,16 @@ socket.on('submitAnswer', (answer) => {
 }
   
   function checkAllVotesSubmitted(force = false) {
-    const playersWhoCanVote = gameState.players.filter(
-      p => p.name !== gameState.currentQuestion.author
-    ).length;
-    
-    const votesCount = Object.keys(gameState.currentVotes).length;
-    const allSubmitted = votesCount >= playersWhoCanVote;
-    
-    if (allSubmitted || force) {
-      clearTimer();
-      startResultsPhase();
-    }
+      const totalPlayers = gameState.players.length;
+      const votesCount = Object.keys(gameState.currentVotes).length;
+      
+      // Todos deben votar (incluyendo al autor si así lo quieres)
+      const allSubmitted = votesCount >= totalPlayers;  // Cambiado de X-1 a X
+      
+      if (allSubmitted || force) {
+          clearTimer();
+          startResultsPhase();
+      }
   }
   
   function startTimer(onComplete) {

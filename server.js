@@ -180,13 +180,7 @@ socket.on('submitAnswer', (answer) => {
         }
     });
 }
-    
-    startTimer(() => {
-        if (gameState.currentPhase === 'vote') {
-            checkAllVotesSubmitted(true);
-        }
-    });
-}
+
 
 
   

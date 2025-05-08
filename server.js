@@ -147,22 +147,29 @@ io.on('connection', (socket) => {
     gameState.currentVotes = {};
     gameState.timeLeft = 30;
     
-    // Enviar respuestas para votación (excepto la del autor)
-    const answersToVote = { ...gameState.currentAnswers };
-    delete answersToVote[gameState.currentQuestion.author];
+    // Crear objeto con todas las respuestas excepto la del autor
+    const answersToVote = {};
+    for (const [player, answer] of Object.entries(gameState.currentAnswers)) {
+        if (player !== gameState.currentQuestion.author) {
+            answersToVote[player] = answer;
+        }
+    }
     
     io.emit('gamePhaseChanged', {
-      phase: 'vote',
-      answers: answersToVote,
-      timeLeft: gameState.timeLeft
+        phase: 'vote',
+        answers: answersToVote,
+        timeLeft: gameState.timeLeft
     });
     
     startTimer(() => {
-      if (gameState.currentPhase === 'vote') {
-        checkAllVotesSubmitted(true);
-      }
+        if (gameState.currentPhase === 'vote') {
+            checkAllVotesSubmitted(true);
+        }
     });
-  }
+}
+
+
+  
   
   function startResultsPhase() {
     gameState.currentPhase = 'results';
@@ -228,17 +235,17 @@ io.on('connection', (socket) => {
   
   function checkAllAnswersSubmitted(force = false) {
     const playersWhoCanAnswer = gameState.players.filter(
-      p => p.name !== gameState.currentQuestion.author
+        p => p.name !== gameState.currentQuestion.author
     ).length;
     
     const answersCount = Object.keys(gameState.currentAnswers).length;
     const allSubmitted = answersCount >= playersWhoCanAnswer;
     
     if (allSubmitted || force) {
-      clearTimer();
-      startVotePhase();
+        clearTimer();
+        startVotePhase();
     }
-  }
+}
   
   function checkAllVotesSubmitted(force = false) {
     const playersWhoCanVote = gameState.players.filter(

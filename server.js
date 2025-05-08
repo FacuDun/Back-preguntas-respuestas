@@ -16,6 +16,7 @@ const io = socketIo(server, {
   }
 });
 
+
 // Estado del juego
 const gameState = {
   players: [],

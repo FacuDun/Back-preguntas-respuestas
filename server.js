@@ -185,41 +185,42 @@ socket.on('submitAnswer', (answer) => {
 
   
   
-  function startResultsPhase() {
+function startResultsPhase() {
     gameState.currentPhase = 'results';
     
-    // Calcular votos
+    // 1. Calcular votos para esta ronda
     const voteCounts = {};
     Object.values(gameState.currentVotes).forEach(votedPlayer => {
-      voteCounts[votedPlayer] = (voteCounts[votedPlayer] || 0) + 1;
+        voteCounts[votedPlayer] = (voteCounts[votedPlayer] || 0) + 1;
     });
     
-    // Actualizar puntajes
+    // 2. Actualizar puntajes globales
     Object.entries(voteCounts).forEach(([player, votes]) => {
-      gameState.scores[player] = (gameState.scores[player] || 0) + votes;
+        gameState.scores[player] = (gameState.scores[player] || 0) + votes;
     });
     
-    // Ordenar respuestas por votos
+    // 3. Ordenar respuestas por votos (ranking)
     const rankedAnswers = Object.entries(gameState.currentAnswers)
-      .map(([player, answer]) => ({
-        player,
-        answer,
-        votes: voteCounts[player] || 0
-      }))
-      .sort((a, b) => b.votes - a.votes);
+        .map(([player, answer]) => ({
+            player,
+            answer,
+            votes: voteCounts[player] || 0  // Si no recibió votos, muestra 0
+        }))
+        .sort((a, b) => b.votes - a.votes);
     
+    // 4. Enviar datos al frontend
     io.emit('gamePhaseChanged', {
-      phase: 'results',
-      rankedAnswers,
-      scores: gameState.scores,
-      timeLeft: 10
+        phase: 'results',
+        rankedAnswers,       // Respuestas rankeadas en esta ronda
+        scores: gameState.scores,  // Tabla de puntajes actualizada
+        timeLeft: 10         // 10 segundos para mostrar resultados
     });
     
     // Pasar a la siguiente pregunta después de 10 segundos
     setTimeout(() => {
-      nextQuestionOrEndGame();
+        nextQuestionOrEndGame();
     }, 10000);
-  }
+}
   
   function nextQuestionOrEndGame() {
     gameState.questions.shift();

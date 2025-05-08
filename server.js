@@ -78,13 +78,19 @@ io.on('connection', (socket) => {
   });
   
   // Enviar respuesta
-  socket.on('submitAnswer', (answer) => {
+socket.on('submitAnswer', (answer) => {
     const player = gameState.players.find(p => p.id === socket.id);
     if (player && gameState.currentPhase === 'answer') {
-      gameState.currentAnswers[player.name] = answer;
-      checkAllAnswersSubmitted();
+        gameState.currentAnswers[player.name] = answer;
+        
+        // DEBUG: Verificar respuestas almacenadas
+        console.log(`Respuesta recibida de ${player.name}:`, answer);
+        console.log("Todas las respuestas actuales:", gameState.currentAnswers);
+        //
+      
+        checkAllAnswersSubmitted();
     }
-  });
+});
   
   // Enviar voto
   socket.on('submitVote', (votedPlayer) => {
@@ -146,20 +152,34 @@ io.on('connection', (socket) => {
     gameState.currentPhase = 'vote';
     gameState.currentVotes = {};
     gameState.timeLeft = 30;
-    
-    // Crear objeto con todas las respuestas excepto la del autor
+
+    // DEBUG: Verificar respuestas antes de enviarlas
+    console.log("Respuestas antes de filtrar:", gameState.currentAnswers);
+
+    // Filtrar respuestas (excluyendo al autor)
     const answersToVote = {};
     for (const [player, answer] of Object.entries(gameState.currentAnswers)) {
         if (player !== gameState.currentQuestion.author) {
             answersToVote[player] = answer;
         }
     }
-    
+
+    // DEBUG: Verificar respuestas que se enviarán al frontend
+    console.log("Respuestas para votación:", answersToVote);
+    //
+
     io.emit('gamePhaseChanged', {
         phase: 'vote',
-        answers: answersToVote,
+        answers: answersToVote,  // Asegúrate de que esto contiene las respuestas correctas
         timeLeft: gameState.timeLeft
     });
+
+    startTimer(() => {
+        if (gameState.currentPhase === 'vote') {
+            checkAllVotesSubmitted(true);
+        }
+    });
+}
     
     startTimer(() => {
         if (gameState.currentPhase === 'vote') {
